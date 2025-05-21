@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>租金試算工具</title>
+  <style>
+    body, html {
+      height: 100%;
+      margin: 0;
+      font-family: "微軟正黑體", sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #f5f5f5;
+    }
+
+    #container {
+      background: white;
+      padding: 15px 55px;
+      border-radius: 8px;
+      box-shadow: 0 0 12px rgb(0 0 0 / 0.1);
+      max-width: 900px;
+      width: 100%;
+      box-sizing: border-box;
+      position: relative;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .form-row {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      margin: 5px 0;
+      width: 350px;
+    }
+
+    label {
+      width: 120px;
+      font-weight: bold;
+      text-align: left;
+      margin-right: 15px;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    input {
+      width: 200px;
+      padding: 5px 8px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    #buttonGroup {
+      margin: 10px 0 15px 0;
+      text-align: center;
+    }
+
+    button {
+      padding: 8px 20px;
+      margin: 0 10px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 14px;
+      border: none;
+      border-radius: 4px;
+      background-color: #6C6C6C;
+      color: white;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #005A9E;
+    }
+
+    button.magnetic {
+      transition: transform 0.2s ease;
+      position: relative;
+      z-index: 1;
+    }
+
+    #outputWrapper {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+    }
+
+    textarea {
+      width: 250px;
+      height: 250px;
+      font-family: "微軟正黑體";
+      font-size: 11pt;
+      font-weight: bold;
+      white-space: pre-wrap;
+      resize: vertical;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    #htmlContent {
+      display: none;
+    }
+
+    #footerNote {
+      position: fixed;
+      bottom: 8px;
+      right: 10px;
+      font-size: 7px;
+      font-weight: bold;
+      color: #3C3C3C;
+      font-family: "微軟正黑體", sans-serif;
+    }
+  </style>
+</head>
+<body>
+
+<div id="container">
+  <h2>租金試算表單</h2>
+
+  <form id="rentForm" onsubmit="event.preventDefault(); generateTemplate();">
+    <div class="form-row">
+      <label for="year">開播年（西元）：</label>
+      <input type="number" id="year" min="1900" max="2100" />
+    </div>
+
+    <div class="form-row">
+      <label for="month">開播月：</label>
+      <input type="number" id="month" min="1" max="12" />
+    </div>
+
+    <div class="form-row">
+      <label for="day">開播日：</label>
+      <input type="number" id="day" min="1" max="31" />
+    </div>
+
+    <div class="form-row">
+      <label for="rent">單台租金：</label>
+      <input type="number" id="rent" min="0" step="0.01" />
+    </div>
+
+    <div class="form-row">
+      <label for="units">台數：</label>
+      <input type="number" id="units" min="1" />
+    </div>
+  </form>
+
+  <div id="buttonGroup">
+    <button id="calcBtn" onclick="generateTemplate()">計算</button>
+    <button id="copyBtn" onclick="copyHTML()">📋 複製</button>
+    <button onclick="clearAll()">清除</button>
+  </div>
+
+  <div id="outputWrapper">
+    <div>
+      <h3>📎 計算公式結果：</h3>
+      <textarea id="calcResult" readonly></textarea>
+    </div>
+    <div>
+      <h3>📝 郵件內容產出：</h3>
+      <textarea id="emailBody" readonly></textarea>
+    </div>
+  </div>
+  <div id="htmlContent"></div>
+</div>
+<div id="footerNote">20250520 #SummerChung</div>
+
+<script>
+function daysInMonth(year, month) {
+  return new Date(year, month, 0).getDate();
+}
+
+function isValidInputs() {
+  return ["year", "month", "day", "rent", "units"].every(id => {
+    const value = document.getElementById(id).value;
+    return value !== "" && value !== null;
+  });
+}
+
+function calculateFormula() {
+  const year = parseInt(document.getElementById('year').value);
+  const month = parseInt(document.getElementById('month').value);
+  const day = parseInt(document.getElementById('day').value);
+  const rent = parseFloat(document.getElementById('rent').value);
+  const units = parseInt(document.getElementById('units').value);
+
+  if (!isValidInputs()) return null;
+
+  const daysTotal = daysInMonth(year, month);
+  if (day > daysTotal) {
+    alert(`該月只有 ${daysTotal} 天，請修正「開播日」`);
+    return null;
+  }
+
+  const playDays = daysTotal - day + 1;
+  const total = Math.round(rent / daysTotal * playDays * units);
+  const formula = `${rent} / ${daysTotal} * ${playDays} * ${units} = $${total}`;
+
+  document.getElementById("calcResult").value = formula;
+  return { formula, year, month, day, rent, units };
+}
+
+function generateTemplate() {
+  const result = calculateFormula();
+  if (!result) return;
+
+  const { formula, year, month, day, rent, units } = result;
+  const rocYear = year - 1911;
+  const dateStr = `${rocYear}/${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
+
+  const plainText = `Dear All：\n\n大樓名稱：\n地址：\n合約期間：\n掛機開播日期：${dateStr}\n單台租金：${rent}\n實際掛機台數：${units}\n備註：${formula}`;
+
+  const htmlTemplate = `
+    <div style="font-family: '微軟正黑體'; font-size: 11pt; font-weight: bold; line-height: 1.6;">
+      Dear All：<br><br>
+      大樓名稱：<br>
+      地址：<br>
+      合約期間：<br>
+      掛機開播日期：${dateStr}<br>
+      單台租金：${rent}<br>
+      實際掛機台數：${units}<br>
+      備註：${formula}
+    </div>
+  `;
+
+  document.getElementById("emailBody").value = plainText;
+  document.getElementById("htmlContent").innerHTML = htmlTemplate;
+}
+
+function copyHTML() {
+  const html = document.getElementById("htmlContent").innerHTML;
+  if (!html) {
+    alert("請先產生信件內容");
+    return;
+  }
+
+  const blob = new Blob([html], { type: "text/html" });
+  const data = [new ClipboardItem({ "text/html": blob })];
+
+  navigator.clipboard.write(data).then(() => {
+    alert("HTML 內容已複製，請貼到 Outlook 中使用！");
+  }).catch(() => {
+    alert("複製失敗，請使用支援 clipboard 的瀏覽器");
+  });
+}
+
+function clearAll() {
+  ['year','month','day','rent','units'].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("calcResult").value = "";
+  document.getElementById("emailBody").value = "";
+  document.getElementById("htmlContent").innerHTML = "";
+}
+
+// 監聽欄位自動更新結果
+['year', 'month', 'day', 'rent', 'units'].forEach(id => {
+  document.getElementById(id).addEventListener("input", generateTemplate);
+});
+
+// 排斥效果
+
+document.addEventListener("mousemove", function(e) {
+  const calcBtn = document.getElementById("calcBtn");
+  const copyBtn = document.getElementById("copyBtn");
+  const buttons = [calcBtn, copyBtn];
+
+  if (!isValidInputs()) {
+    buttons.forEach(button => {
+      const rect = button.getBoundingClientRect();
+      const mouseX = e.clientX;
+      const mouseY = e.clientY;
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const dx = centerX - mouseX;
+      const dy = centerY - mouseY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      const repelRadius = 140;
+      if (distance < repelRadius) {
+        const angle = Math.atan2(dy, dx);
+        const offsetX = Math.cos(angle) * (repelRadius - distance);
+        const offsetY = Math.sin(angle) * (repelRadius - distance);
+        button.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+        button.classList.add("magnetic");
+      } else {
+        button.style.transform = "translate(0, 0)";
+        button.classList.remove("magnetic");
+      }
+    });
+  } else {
+    buttons.forEach(button => {
+      button.style.transform = "translate(0, 0)";
+      button.classList.remove("magnetic");
+    });
+  }
+});
+</script>
+</body>
+</html>
