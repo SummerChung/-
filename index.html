@@ -187,6 +187,19 @@ function isValidInputs() {
   });
 }
 
+function checkMonthAndDay(year, month, day) {
+  if (month < 1 || month > 12) {
+    alert("開播月請輸入 1 到 12 之間的數字");
+    return false;
+  }
+  const daysTotal = daysInMonth(year, month);
+  if (day < 1 || day > daysTotal) {
+    alert(`該月只有 ${daysTotal} 天，請修正「開播日」`);
+    return false;
+  }
+  return true;
+}
+
 function calculateFormula() {
   const year = parseInt(document.getElementById('year').value);
   const month = parseInt(document.getElementById('month').value);
@@ -196,11 +209,9 @@ function calculateFormula() {
 
   if (!isValidInputs()) return null;
 
+  if (!checkMonthAndDay(year, month, day)) return null;
+
   const daysTotal = daysInMonth(year, month);
-  if (day > daysTotal) {
-    alert(`該月只有 ${daysTotal} 天，請修正「開播日」`);
-    return null;
-  }
 
   const playDays = daysTotal - day + 1;
   const total = Math.round(rent / daysTotal * playDays * units);
